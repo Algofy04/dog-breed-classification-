@@ -1,7 +1,7 @@
-streamlit 
-tensorflow
-numpy
-matplotlib 
-pansas
-keras
-opencv-python-headless
+streamlit==1.37.0
+tensorflow==2.12.0
+keras==2.12.0
+numpy==1.23.5
+pillow==9.5.0
+matplotlib==3.7.1
+opencv-python-headless==4.8.0.74
