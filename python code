@@ -1,0 +1,64 @@
+import os
+import pickle
+import tensorflow as tf
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from tensorflow.keras.applications import EfficientNetB3
+from tensorflow.keras.models import Model
+from tensorflow.keras.layers import Dense, GlobalAveragePooling2D
+from tensorflow.keras.optimizers import Adam
+
+# Paths
+train_dir = "../data/train"
+val_dir = "../data/val"
+model_path = "../models/efficientnetb3_model.h5"
+labels_path = "../labels/labels.pkl"
+
+# Hyperparameters
+img_size = (300, 300)
+batch_size = 32
+epochs = 10
+num_classes = 120
+
+# Data generators
+train_datagen = ImageDataGenerator(
+    rescale=1./255,
+    horizontal_flip=True
+)
+val_datagen = ImageDataGenerator(rescale=1./255)
+
+train_generator = train_datagen.flow_from_directory(
+    train_dir, target_size=img_size, batch_size=batch_size, class_mode='categorical'
+)
+val_generator = val_datagen.flow_from_directory(
+    val_dir, target_size=img_size, batch_size=batch_size, class_mode='categorical'
+)
+
+# Save class indices
+with open(labels_path, "wb") as f:
+    pickle.dump(train_generator.class_indices, f)
+
+# Build model
+base_model = EfficientNetB3(weights='imagenet', include_top=False, input_shape=(300, 300, 3))
+x = base_model.output
+x = GlobalAveragePooling2D()(x)
+x = Dense(512, activation='relu')(x)
+predictions = Dense(num_classes, activation='softmax')(x)
+model = Model(inputs=base_model.input, outputs=predictions)
+
+# Freeze base model for transfer learning
+for layer in base_model.layers:
+    layer.trainable = False
+
+# Compile
+model.compile(optimizer=Adam(learning_rate=0.0001), loss='categorical_crossentropy', metrics=['accuracy'])
+
+# Train
+history = model.fit(
+    train_generator,
+    validation_data=val_generator,
+    epochs=epochs
+)
+
+# Save model
+model.save(model_path)
+print("Model training complete and saved.")
